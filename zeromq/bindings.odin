@@ -369,24 +369,27 @@ foreign lib {
 /***************************************************************************** */
 /* Deprecated I/O multiplexing. Prefer using zmq_poller API */
 /***************************************************************************** */
-POLLIN :: 1
-POLLOUT :: 2
-POLLERR :: 4
-POLLPRI :: 8
+Poll_Event :: enum c.int {
+    NONE    = 0,
+    POLLIN  = 1,
+    POLLOUT = 2,
+    POLLERR = 4,
+    POLLPRI = 8,
+}
 
 FD :: c.int
 Poll_Item :: struct {
     socket:  ^Socket,
     fd:      FD,
-    events:  c.short,
-    revents: c.short,
+    events:  Poll_Event,
+    revents: Poll_Event,
 }
 Poller :: struct {}
 Poller_Event :: struct {
     socket:    ^Socket,
     fd:        FD,
-    events:    c.short,
     user_data: rawptr,
+    events:    Poll_Event,
 }
 
 POLLITEMS_DFLT :: 16
@@ -399,13 +402,13 @@ foreign lib {
     poller_destroy :: proc(p: ^^Poller) -> c.int ---
     poller_fd :: proc(p: ^Poller, fd: FD) -> c.int ---
     poller_size :: proc(p: ^^Poller) -> c.int ---
-    poller_add :: proc(p: ^Poller, socket, user_data: rawptr, events: c.short) -> c.int ---
-    poller_modify :: proc(p: ^Poller, socket: ^Socket, events: c.short) -> c.int ---
+    poller_add :: proc(p: ^Poller, socket: ^Socket, user_data: rawptr, events: Poll_Event) -> c.int ---
+    poller_modify :: proc(p: ^Poller, socket: ^Socket, events: Poll_Event) -> c.int ---
     poller_remove :: proc(p: ^Poller, socket: ^Socket) -> c.int ---
     poller_wait :: proc(p: ^Poller, pe: ^Poller_Event, timeout: c.long) -> c.int ---
     poller_wait_all :: proc(p: ^Poller, pe: ^Poller_Event, n_events: c.int, timeout: c.long) -> c.int ---
-    poller_add_fd :: proc(p: ^Poller, fd: FD, user_data: rawptr, events: c.short) -> c.int ---
-    poller_modify_fd :: proc(p: ^Poller, fd: FD, events: c.short) -> c.int ---
+    poller_add_fd :: proc(p: ^Poller, fd: FD, user_data: rawptr, events: Poll_Event) -> c.int ---
+    poller_modify_fd :: proc(p: ^Poller, fd: FD, events: Poll_Event) -> c.int ---
     poller_remove_fd :: proc(p: ^Poller, fd: FD) -> c.int ---
     socket_get_peer_state :: proc(socket: ^Socket, routing_id: rawptr, routing_id_size: uint) -> c.int ---
     /* Message proxying */
