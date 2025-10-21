@@ -4,38 +4,48 @@ import "core:c"
 import "core:fmt"
 import "core:mem"
 
-print_zmq_error :: proc(err_number: Maybe(c.int) = nil) {
-    code: c.int = err_number.(c.int) or_else errno()
-    fmt.eprintfln("Error(%v): %v", code, strerror(code))
+zmq_error_cstring :: proc(err_number: Maybe(c.int) = nil) -> cstring {
+    return strerror(err_number.(c.int) or_else errno())
 }
 
-setsockopt_string :: proc(s: ^Socket, option: Socket_Option, optval: string) -> (ok: bool) {
-    return setsockopt(s, option, raw_data(optval), cast(c.int)len(optval)) == 0
+print_zmq_error :: proc() {
+    code := errno()
+    fmt.eprintfln("Error(%v): %v", code, zmq_error_cstring(code))
 }
 
-recv_msg :: proc(s: ^Socket, allocator := context.allocator) -> []byte {
+setsockopt_string :: proc(s: ^Socket, option: Socket_Option, value: string) -> (ok: bool) {
+    return setsockopt(s, option, raw_data(value), cast(c.int)len(value)) == 0
+}
+
+setsockopt_int :: proc(s: ^Socket, option: Socket_Option, value: c.int) -> (ok: bool) {
+    value := value
+    return setsockopt(s, option, &value, size_of(c.int)) == 0
+}
+
+recv_msg :: proc(s: ^Socket, allocator := context.allocator) -> (data: []byte, more: bool) {
     msg := Message{}
     rc := msg_init(&msg)
     assert(rc == 0)
     defer msg_close(&msg)
     size := msg_recv(&msg, s, .None)
-    if size == -1 do return nil
-    buf := make([]byte, size, allocator = allocator)
-    mem.copy(raw_data(buf), msg_data(&msg), cast(int)size)
-    return buf
+    more = msg_more(&msg)
+    if size == -1 do return
+    data = make([]byte, size, allocator = allocator)
+    mem.copy(raw_data(data), msg_data(&msg), cast(int)size)
+    return
 }
 
-recv_string :: proc(s: ^Socket, allocator := context.allocator) -> string {
-    buf := recv_msg(s, allocator = allocator)
-    return string(buf)
+recv_string :: proc(s: ^Socket, allocator := context.allocator) -> (data: string, more: bool) {
+    buf, has_more := recv_msg(s, allocator = allocator)
+    return string(buf), has_more
 }
 
-send_empty :: proc(s: ^Socket) -> (ok: bool) {
+send_empty :: proc(s: ^Socket, opt: Send_Recv_Options = .None) -> (ok: bool) {
     msg := Message{}
     rc := msg_init(&msg)
     assert(rc == 0)
     defer msg_close(&msg)
-    return msg_send(&msg, s, .None) == 0
+    return msg_send(&msg, s, opt) == 0
 }
 
 send_msg :: proc(s: ^Socket, buf: []byte, opt: Send_Recv_Options = .None) -> (ok: bool) {
