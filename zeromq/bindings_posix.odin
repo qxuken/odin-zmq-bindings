@@ -1,4 +1,4 @@
-#+build darwin, openbsd, freebsd, netbsd
+#+build linux, darwin, openbsd, freebsd, netbsd
 package zeromq
 
 import "core:sys/posix"
